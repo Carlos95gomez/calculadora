@@ -1,0 +1,19 @@
+.hidden {
+    display: none;
+  }
+  .titulos-guardados {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .form-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .contenedor-titulos {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
