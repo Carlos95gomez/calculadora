@@ -1,162 +1,283 @@
-// Referencias a los elementos del DOM
-const title1 = document.getElementById('title1');
-const title2 = document.getElementById('title2');
-const title3 = document.getElementById('title3');
-const obreroInput = document.getElementById('obrero');
-const displayTitle1 = document.getElementById('displayTitle1');
-const displayTitle2 = document.getElementById('displayTitle2');
-const displayTitle3 = document.getElementById('displayTitle3');
-const displayObrero = document.getElementById('displayObrero');
-const titulosGuardadosContainer = document.getElementById('titulos-guardados');
-const obreroGuardadoContainer = document.getElementById('obrero-guardado');
-const inputFieldsContainer = document.getElementById('inputFields');
-const obreroInputContainer = document.querySelector('.form-inline.mt-4');
-const valor1Input = document.getElementById('valor1');
-const valor2Input = document.getElementById('valor2');
-const tubosInput = document.getElementById('tubos');
-const displayTubos = document.getElementById('displayTubos');
-const totalTubosDisplay = document.getElementById('totalTubos');
+// Estructura de datos para los lotes
+let lotes = {};
+let loteActual = null;
 
-let tubosValues = JSON.parse(localStorage.getItem('tubosValues')) || [];
-
-function saveTitles() {
-    const title1Value = title1.value;
-    const title2Value = title2.value;
-    const title3Value = title3.value;
-
-    const datosTitulos = {
-        title1Value,
-        title2Value,
-        title3Value,
-    };
-
-    localStorage.setItem('userDatosTitulos', JSON.stringify(datosTitulos));
-
-    displayTitle1.textContent = title1Value;
-    displayTitle2.textContent = title2Value;
-    displayTitle3.textContent = title3Value;
-
-    inputFieldsContainer.classList.add('d-none');
-    titulosGuardadosContainer.classList.remove('d-none');
-}
-
-function guardarValores() {
-    const valor1 = parseFloat(valor1Input.value);
-    const valor2 = parseFloat(valor2Input.value);
-
-    const valores = {
-        valor1,
-        valor2,
-    };
-
-    localStorage.setItem('userValores', JSON.stringify(valores));
-}
-
-function saveObrero() {
-    const obreroValue = obreroInput.value;
-    localStorage.setItem('userObrero', obreroValue);
-    displayObrero.textContent = obreroValue;
-    obreroGuardadoContainer.classList.remove('d-none');
-    obreroInputContainer.classList.add('d-none');
-}
-
-function addTubos() {
-    const tuboValue = parseFloat(tubosInput.value);
-    if (!isNaN(tuboValue)) {
-        tubosValues.push(tuboValue);
-        localStorage.setItem('tubosValues', JSON.stringify(tubosValues));
-        displayTubosValues();
-        calculateTotal();
-    }
-    tubosInput.value = '';
-}
-
-function displayTubosValues() {
-    displayTubos.textContent = 'Tubos: ' + tubosValues.join(' + ');
-}
-
-function calculateTotal() {
-    const totalTubos = tubosValues.reduce((acc, curr) => acc + curr, 0);
-    totalTubosDisplay.textContent = 'Total Tubos: ' + totalTubos.toFixed(1);
-
-    const valores = JSON.parse(localStorage.getItem('userValores'));
-    if (valores) {
-        const totalSurcos = totalTubos * valores.valor1 / 45;
-        const finalResult = totalSurcos * valores.valor2;
-        totalTubosDisplay.textContent += ` | Resultado: ${finalResult.toFixed(2)}`;
-    } else {
-        totalTubosDisplay.textContent += ' | Resultado: Ingrese los valores de surcos y precio.';
-    }
-}
-
+// Cargar datos del localStorage al iniciar
 document.addEventListener('DOMContentLoaded', () => {
-    if (localStorage.getItem('tubosValues')) {
-        tubosValues = JSON.parse(localStorage.getItem('tubosValues'));
-        displayTubosValues();
-        calculateTotal();
+    cargarDatos();
+    actualizarSelectorLotes();
+    const fechaInput = document.getElementById('fechaLote');
+    const hoy = new Date().toISOString().split('T')[0];
+    fechaInput.value = hoy;
+});
+
+// Funciones de manejo de datos
+function cargarDatos() {
+    const datosGuardados = localStorage.getItem('lotesData');
+    if (datosGuardados) {
+        lotes = JSON.parse(datosGuardados);
+        if (Object.keys(lotes).length > 0) {
+            loteActual = Object.keys(lotes)[0];
+            mostrarContenidoPrincipal(true);
+            actualizarInterfaz();
+        } else {
+            mostrarContenidoPrincipal(false);
+        }
+    } else {
+        mostrarContenidoPrincipal(false);
+    }
+}
+
+function guardarDatos() {
+    localStorage.setItem('lotesData', JSON.stringify(lotes));
+    actualizarInterfaz();
+}
+
+function mostrarContenidoPrincipal(mostrar) {
+    document.getElementById('mensajeInicial').style.display = mostrar ? 'none' : 'block';
+    document.getElementById('contenidoPrincipal').style.display = mostrar ? 'block' : 'none';
+}
+
+// Funciones de manejo de lotes
+function crearNuevoLote() {
+    const nombre = document.getElementById('nombreLote').value.trim();
+    const fecha = document.getElementById('fechaLote').value;
+    
+    if (!validarNombreLote(nombre)) {
+        return;
+    }
+    
+    if (!fecha) {
+        alert('Por favor, selecciona una fecha válida.');
+        return;
     }
 
-    const savedTitles = JSON.parse(localStorage.getItem('userDatosTitulos'));
-    if (savedTitles) {
-        displayTitle1.textContent = savedTitles.title1Value;
-        displayTitle2.textContent = savedTitles.title2Value;
-        displayTitle3.textContent = savedTitles.title3Value;
-        inputFieldsContainer.classList.add('d-none');
-        titulosGuardadosContainer.classList.remove('d-none');
+    const nuevoLote = {
+        nombre,
+        fecha,
+        tubos: [],
+        surcosPorTubo: 12.0,  // Cambiado a número decimal
+        divisorMelgas: 45,
+        precioMelga: 0
+    };
+
+    lotes[nombre] = nuevoLote;
+    loteActual = nombre;
+    
+    mostrarContenidoPrincipal(true);
+    guardarDatos();
+    actualizarSelectorLotes();
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('nuevoLoteModal'));
+    modal.hide();
+}
+
+function validarNombreLote(nombre) {
+    if (lotes[nombre]) {
+        alert('Ya existe un lote con este nombre. Por favor, elige otro nombre.');
+        return false;
+    }
+    if (!nombre || nombre.trim() === '') {
+        alert('Por favor, ingresa un nombre válido para el lote.');
+        return false;
+    }
+    return true;
+}
+
+function cambiarLote(nombreLote) {
+    if (nombreLote && lotes[nombreLote]) {
+        loteActual = nombreLote;
+        actualizarInterfaz();
+    }
+}
+
+function eliminarLoteActual() {
+    if (loteActual && confirm(`¿Estás seguro de que deseas eliminar el lote "${loteActual}"?`)) {
+        delete lotes[loteActual];
+        
+        const lotesRestantes = Object.keys(lotes);
+        if (lotesRestantes.length > 0) {
+            loteActual = lotesRestantes[0];
+            actualizarSelectorLotes();
+            actualizarInterfaz();
+        } else {
+            loteActual = null;
+            mostrarContenidoPrincipal(false);
+        }
+        
+        guardarDatos();
+    }
+}
+
+function actualizarSelectorLotes() {
+    const selector = document.getElementById('selectorLote');
+    selector.innerHTML = '';
+    
+    Object.keys(lotes).forEach(nombreLote => {
+        const option = document.createElement('option');
+        option.value = nombreLote;
+        option.textContent = `${nombreLote} (${lotes[nombreLote].fecha})`;
+        if (nombreLote === loteActual) {
+            option.selected = true;
+        }
+        selector.appendChild(option);
+    });
+}
+
+// Funciones de la calculadora
+function agregarTubo() {
+    if (!loteActual) return;
+
+    const tuboInput = document.getElementById('tuboInput');
+    const cantidad = parseFloat(tuboInput.value);
+    
+    if (cantidad && cantidad > 0) {
+        lotes[loteActual].tubos.push(cantidad);
+        guardarDatos();
+        tuboInput.value = '';
+    } else {
+        alert('Por favor ingrese una cantidad válida de tubos');
+    }
+}
+
+function eliminarTubo(index) {
+    lotes[loteActual].tubos.splice(index, 1);
+    guardarDatos();
+}
+
+function formatearNumero(numero) {
+    return Number(parseFloat(numero).toFixed(1));  // Asegura que se muestre un decimal
+}
+
+function actualizarInterfaz() {
+    if (!loteActual) return;
+
+    const lote = lotes[loteActual];
+    actualizarListaTubos();
+    calcularTotales();
+
+    document.getElementById('surcosPorTubo').value = lote.surcosPorTubo;
+    document.getElementById('divisorMelgas').value = lote.divisorMelgas;
+    document.getElementById('precioMelga').value = lote.precioMelga;
+}
+
+function actualizarListaTubos() {
+    const listaTubos = document.getElementById('listaTubos');
+    const totalTubosElement = document.getElementById('totalTubos');
+    
+    if (!loteActual) return;
+
+    listaTubos.innerHTML = '';
+    const totalTubos = lotes[loteActual].tubos.reduce((sum, tubo) => sum + tubo, 0);
+    
+    lotes[loteActual].tubos.forEach((tubo, index) => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+        item.innerHTML = `
+            <span>${formatearNumero(tubo)} tubos</span>
+            <button class="btn btn-danger btn-sm" onclick="eliminarTubo(${index})">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        listaTubos.appendChild(item);
+    });
+    
+    totalTubosElement.textContent = `Total de tubos: ${formatearNumero(totalTubos)}`;
+}
+
+function calcularTotales() {
+    if (!loteActual) return;
+
+    const lote = lotes[loteActual];
+    const totalTubos = lote.tubos.reduce((sum, tubo) => sum + tubo, 0);
+    const totalSurcos = formatearNumero(totalTubos * lote.surcosPorTubo);
+    const totalMelgas = formatearNumero(totalSurcos / lote.divisorMelgas);
+    const sueldoTotal = Math.round(totalMelgas * lote.precioMelga);
+    
+    document.getElementById('totalSurcos').textContent = totalSurcos;
+    document.getElementById('totalMelgas').textContent = totalMelgas;
+    document.getElementById('sueldoTotal').textContent = `$${sueldoTotal.toLocaleString('es-CO')}`;
+}
+
+function imprimirCuentas() {
+    if (!loteActual) {
+        alert('No hay datos para imprimir');
+        return;
     }
 
-    const savedObrero = localStorage.getItem('userObrero');
-    if (savedObrero) {
-        displayObrero.textContent = savedObrero;
-        obreroGuardadoContainer.classList.remove('d-none');
-        obreroInputContainer.classList.add('d-none');
+    const lote = lotes[loteActual];
+    const contenidoImprimir = `
+        <html>
+        <head>
+            <title>Cuentas del Lote: ${lote.nombre}</title>
+            <style>
+                body { font-family: Arial; padding: 20px; }
+                .titulo { text-align: center; margin-bottom: 20px; }
+                .datos { margin-bottom: 15px; }
+                .total { font-weight: bold; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="titulo">
+                <h1>Cuentas de Transplante</h1>
+                <h2>Lote: ${lote.nombre}</h2>
+                <p>Fecha: ${lote.fecha}</p>
+            </div>
+            <div class="datos">
+                <p>Total de tubos: ${formatearNumero(lote.tubos.reduce((sum, tubo) => sum + tubo, 0))}</p>
+                <p>Total de surcos: ${formatearNumero(lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo)}</p>
+                <p>Total de melgas: ${formatearNumero((lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo) / lote.divisorMelgas)}</p>
+            </div>
+            <div class="total">
+                <p>Sueldo Total: $${Math.round((lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo) / lote.divisorMelgas * lote.precioMelga).toLocaleString('es-CO')}</p>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const ventanaImprimir = window.open('', '_blank');
+    ventanaImprimir.document.write(contenidoImprimir);
+    ventanaImprimir.document.close();
+    ventanaImprimir.print();
+}
+
+// Event listeners para los inputs de cálculo
+document.getElementById('surcosPorTubo').addEventListener('input', function() {
+    if (loteActual) {
+        const valor = parseFloat(this.value);
+        if (!isNaN(valor) && valor >= 0) {
+            lotes[loteActual].surcosPorTubo = Number(valor.toFixed(2));
+            guardarDatos();
+            calcularTotales();
+        }
     }
 });
-function eliminarUltimoTubo() {
-    tubosValues.pop();
-    localStorage.setItem('tubosValues', JSON.stringify(tubosValues));
-    displayTubosValues();
-    calculateTotal();
-}
-function editarUltimoTubo() {
-    const editarTuboInput = document.getElementById('editarTubo');
-    const nuevoValor = parseFloat(editarTuboInput.value);
-    if (!isNaN(nuevoValor)) {
-        tubosValues[tubosValues.length - 1] = nuevoValor;
-        localStorage.setItem('tubosValues', JSON.stringify(tubosValues));
-        displayTubosValues();
-        calculateTotal();
-        editarTuboInput.value = '';
+
+document.getElementById('divisorMelgas').addEventListener('change', function() {
+    if (loteActual) {
+        lotes[loteActual].divisorMelgas = parseInt(this.value);
+        guardarDatos();
+        calcularTotales();
     }
-}
-function limpiarTodo() {
-    // Limpiar el localStorage
-    localStorage.removeItem('userDatosTitulos');
-    localStorage.removeItem('userValores');
-    localStorage.removeItem('userObrero');
-    localStorage.removeItem('tubosValues');
+});
 
-    // Limpiar los campos de la interfaz de usuario
-    title1.value = '';
-    title2.value = '';
-    title3.value = '';
-    valor1Input.value = '';
-    valor2Input.value = '';
-    obreroInput.value = '';
-    tubosInput.value = '';
-    displayTitle1.textContent = '';
-    displayTitle2.textContent = '';
-    displayTitle3.textContent = '';
-    displayObrero.textContent = '';
-    displayTubos.textContent = '';
-    totalTubosDisplay.textContent = '';
+document.getElementById('precioMelga').addEventListener('input', function() {
+    if (loteActual) {
+        lotes[loteActual].precioMelga = parseInt(this.value) || 0;
+        guardarDatos();
+        calcularTotales();
+    }
+});
 
-    // Ocultar los contenedores y mostrar los campos de entrada
-    titulosGuardadosContainer.classList.add('d-none');
-    obreroGuardadoContainer.classList.add('d-none');
-    inputFieldsContainer.classList.remove('d-none');
-    obreroInputContainer.classList.remove('d-none');
+// Limpiar los campos del modal cuando se abre
+document.getElementById('nuevoLoteModal').addEventListener('show.bs.modal', function() {
+    document.getElementById('nombreLote').value = '';
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaLote').value = hoy;
+});
 
-    // Restablecer los valores
-    tubosValues = [];
-}
+// Prevenir que se cierren los modales al hacer click fuera
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.setAttribute('data-bs-backdrop', 'static');
+    modal.setAttribute('data-bs-keyboard', 'false');
+});

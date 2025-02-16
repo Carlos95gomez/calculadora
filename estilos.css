@@ -1,19 +1,36 @@
-.hidden {
-    display: none;
+.list-group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alert h5 {
+  margin-bottom: 0.5rem;
+}
+
+.navbar-text {
+  font-size: 1.1rem;
+}
+
+.footer a:hover {
+  opacity: 0.8;
+}
+
+.footer i {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .card {
+      margin-bottom: 1rem;
   }
-  .titulos-guardados {
-    display: flex;
-    align-items: center;
-    width: 100%;
+  
+  .alert {
+      margin-bottom: 1rem;
   }
-  .form-inline {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+
+  .navbar-text {
+      font-size: 0.9rem;
+      text-align: center;
   }
-  .contenedor-titulos {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
+}
