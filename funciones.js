@@ -28,9 +28,33 @@ function cargarDatos() {
     }
 }
 
-function guardarDatos() {
-    localStorage.setItem('lotesData', JSON.stringify(lotes));
-    actualizarInterfaz();
+function guardarDatos() { 
+    try {
+        // Verificar número de lotes
+        const MAX_LOTES = 10;
+        const totalLotes = Object.keys(lotes).length;
+        
+        if (totalLotes > MAX_LOTES) {
+            // Mostrar alerta sugiriendo limpieza de lotes antiguos
+            alert(`Has superado el límite de ${MAX_LOTES} lotes. 
+            
+            Por favor, considera eliminar algunos lotes antiguos antes de crear más.
+
+            Consejo: Puedes imprimir los datos de los lotes antiguos antes de eliminarlos.`);
+        }
+        
+        // Guardar en localStorage sin eliminar automáticamente
+        localStorage.setItem('lotesData', JSON.stringify(lotes)); 
+        
+        // Actualizar interfaz
+        actualizarInterfaz();
+        actualizarSelectorLotes();
+        
+        console.log('Datos guardados. Lotes totales:', totalLotes);
+    } catch (error) {
+        console.error('Error al guardar los datos:', error);
+        alert('No se pudieron guardar los datos. Revise el almacenamiento local.');
+    }
 }
 
 function mostrarContenidoPrincipal(mostrar) {
@@ -91,20 +115,33 @@ function cambiarLote(nombreLote) {
     }
 }
 
-function eliminarLoteActual() {
-    if (loteActual && confirm(`¿Estás seguro de que deseas eliminar el lote "${loteActual}"?`)) {
+function eliminarLoteActual() { 
+    if (!loteActual) return;
+    
+    // Confirmar eliminación con mensaje de impresión
+    const confirmacion = confirm(`¿Estás seguro de eliminar el lote "${loteActual}"? 
+    
+    Consejo: Asegúrate de haber imprimido los datos antes de eliminar.`);
+    
+    if (confirmacion) {
+        // Eliminar lote
         delete lotes[loteActual];
         
+        // Obtener lotes restantes
         const lotesRestantes = Object.keys(lotes);
+        
         if (lotesRestantes.length > 0) {
+            // Seleccionar nuevo lote actual
             loteActual = lotesRestantes[0];
             actualizarSelectorLotes();
             actualizarInterfaz();
         } else {
+            // No quedan lotes
             loteActual = null;
             mostrarContenidoPrincipal(false);
         }
         
+        // Guardar cambios
         guardarDatos();
     }
 }
@@ -199,46 +236,53 @@ function calcularTotales() {
     document.getElementById('sueldoTotal').textContent = `$${sueldoTotal.toLocaleString('es-CO')}`;
 }
 
-function imprimirCuentas() {
-    if (!loteActual) {
-        alert('No hay datos para imprimir');
-        return;
-    }
-
-    const lote = lotes[loteActual];
+function imprimirCuentas() { 
+    if (!loteActual) { 
+        alert('No hay datos para imprimir'); 
+        return; 
+    } 
+    
+    const lote = lotes[loteActual]; 
+    
+    // Desglose detallado de tubos
+    const desgloseTubos = lote.tubos.join(' + ');
+    const totalTubos = lote.tubos.reduce((sum, tubo) => sum + tubo, 0);
+    
     const contenidoImprimir = `
-        <html>
-        <head>
-            <title>Cuentas del Lote: ${lote.nombre}</title>
-            <style>
-                body { font-family: Arial; padding: 20px; }
-                .titulo { text-align: center; margin-bottom: 20px; }
-                .datos { margin-bottom: 15px; }
-                .total { font-weight: bold; margin-top: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class="titulo">
-                <h1>Cuentas de Transplante</h1>
-                <h2>Lote: ${lote.nombre}</h2>
-                <p>Fecha: ${lote.fecha}</p>
-            </div>
-            <div class="datos">
-                <p>Total de tubos: ${formatearNumero(lote.tubos.reduce((sum, tubo) => sum + tubo, 0))}</p>
-                <p>Total de surcos: ${formatearNumero(lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo)}</p>
-                <p>Total de melgas: ${formatearNumero((lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo) / lote.divisorMelgas)}</p>
-            </div>
-            <div class="total">
-                <p>Sueldo Total: $${Math.round((lote.tubos.reduce((sum, tubo) => sum + tubo, 0) * lote.surcosPorTubo) / lote.divisorMelgas * lote.precioMelga).toLocaleString('es-CO')}</p>
-            </div>
-        </body>
+        <html> 
+        <head> 
+            <title>Cuentas del Lote: ${lote.nombre}</title> 
+            <style> 
+                body { font-family: Arial; padding: 20px; } 
+                .titulo { text-align: center; margin-bottom: 20px; } 
+                .datos { margin-bottom: 15px; } 
+                .total { font-weight: bold; margin-top: 20px; } 
+            </style> 
+        </head> 
+        <body> 
+            <div class="titulo"> 
+                <h1>Cuentas de Transplante</h1> 
+                <h2>Lote: ${lote.nombre}</h2> 
+                <p>Fecha: ${lote.fecha}</p> 
+            </div> 
+            <div class="datos"> 
+                <p>Tubos: ${desgloseTubos} (Total: ${formatearNumero(totalTubos)} tubos)</p> 
+                <p>Surcos: ${lote.surcosPorTubo}</p>
+                <p>Divisor de melgas: ${lote.divisorMelgas}</p>
+                <p>Total de melgas: ${formatearNumero((totalTubos * lote.surcosPorTubo) / lote.divisorMelgas)}</p>
+                <p>Precio por melga: $${lote.precioMelga.toLocaleString('es-CO')}</p>
+            </div> 
+            <div class="total"> 
+                <p>Sueldo Total: $${Math.round((totalTubos * lote.surcosPorTubo / lote.divisorMelgas) * lote.precioMelga).toLocaleString('es-CO')}</p> 
+            </div> 
+        </body> 
         </html>
     `;
 
-    const ventanaImprimir = window.open('', '_blank');
-    ventanaImprimir.document.write(contenidoImprimir);
-    ventanaImprimir.document.close();
-    ventanaImprimir.print();
+    const ventanaImprimir = window.open('', '_blank'); 
+    ventanaImprimir.document.write(contenidoImprimir); 
+    ventanaImprimir.document.close(); 
+    ventanaImprimir.print(); 
 }
 
 // Event listeners para los inputs de cálculo
